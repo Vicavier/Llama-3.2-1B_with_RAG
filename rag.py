@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class KnowledgeBase:
     def __init__(self, filepath, tokenizer, model, device):
-        self.content = self.read_all_txt_files("./knowledge")
+        self.content = self.read_all_txt_files(filepath)
         self.tokenizer = tokenizer
         self.model = model
         self.device = device
@@ -28,12 +28,14 @@ class KnowledgeBase:
             docs.append(self.content[i:i+max_length])
             encodings.append(self.encoding(self.content[i:i+max_length]))
         encodings = torch.cat(encodings,dim=0)
-        return docs[:-1], encodings[:-1]
+        return docs, encodings
 
     def encoding(self, text):
         inputs = self.tokenizer(
             text,
-            return_tensors="pt"
+            return_tensors="pt",
+            padding = 'max_length',
+            max_length = 256
         ).to(self.device)
         with torch.no_grad():
             outputs = self.model(**inputs, output_hidden_states=True, return_dict=True)

@@ -53,9 +53,13 @@ def get_next_token_probabilities(model, tokenizer, prompt, device, max_new_token
     生成回答
     """
     pre = knowledge_base.search(prompt)
-    print("match text:" + pre)
+    # print("match text:" + pre)
     prompt = "Given the following text: " + pre + ". Answer question: " + prompt
-    inputs = tokenizer(prompt, return_tensors="pt", max_length = 1024, truncation = True)
+    inputs = tokenizer(prompt, 
+                       return_tensors="pt", 
+                       max_length = 1024, 
+                       truncation = True,
+                       padding = 'max_length')
     inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model.generate(
@@ -91,7 +95,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
     # 从 “questions/text.jsonl” 中读取数据
-    data = load_data("questions/text.jsonl")
+    data = load_data("questions/QA_PharmaDrugSales.jsonl")
     # 确定模型已下载并且获取到正确的路径
     try:
         model_path = ensure_model_downloaded("models/Llama-3.2-1B-Instruct")
@@ -111,7 +115,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error loading model: {e}")
     
-    knowledge_base = KnowledgeBase("./knowledge/1.txt", tokenizer, model, torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+    knowledge_base = KnowledgeBase("./knowledge", tokenizer, model, torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     results = []
     for item in tqdm(data, desc="Processing questions"):
         prompt = tokenizer.apply_chat_template(
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         )
         try:
             # 通过 forward passes 收集大模型的回答
-            answer = get_next_token_probabilities(model, tokenizer, prompt, device, 64, knowledge_base)
+            answer = get_next_token_probabilities(model, tokenizer, prompt, device, 512, knowledge_base)
             results.append({
                 'id':item['id'],
                 'answer': answer
@@ -132,5 +136,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error with prediction: {e}")
 
-    save_results(results, "./answers/text.jsonl")
+    save_results(results, "./answers/RAG.jsonl")
     print(f"Results saved")
